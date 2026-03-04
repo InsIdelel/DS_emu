@@ -1,257 +1,137 @@
-/**
- * DS VAULT — PLAYER.JS
- */
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DS Vault — Bibliothèque</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
 
-const SLOTS = 3;
-let romId = null;
-let romData = null;
-let romName = '';
-let currentSlot = 0;
-let isPaused = false;
+<div class="scanlines"></div>
+<div class="noise"></div>
 
-window.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(window.location.search);
-  romId = params.get('rom');
-  if (!romId) { window.location.href = 'index.html'; return; }
-  await openDB();
-  const rom = await getROM(romId);
-  if (!rom) { window.location.href = 'index.html'; return; }
-  romName = rom.name;
-  romData = rom.data;
-  document.title = `DS Vault — ${romName}`;
-  document.getElementById('game-title-header').textContent = romName;
-  document.getElementById('gcm-title').textContent = romName;
-  document.getElementById('gcm-meta').textContent = `NDS · ${formatSize(rom.size)}`;
-  document.getElementById('gcm-played').textContent = formatDate(rom.lastPlayed);
-  document.getElementById('loading-game-name').textContent = romName;
-  await renderSaveSlots();
-  await updateROMPlaytime(romId);
-  startLoadingAnim();
-  setupKeyboard();
-});
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">DS<span class="accent">VAULT</span></span>
+    </div>
+    <nav class="nav">
+      <span class="nav-item active">BIBLIOTHÈQUE</span>
+      <span class="nav-item" onclick="openSaveManager()">SAUVEGARDES</span>
+      <span class="nav-item" onclick="openUpload()">+ AJOUTER ROM</span>
+    </nav>
+    <div class="header-stats">
+      <span class="stat"><span id="rom-count">0</span> ROMs</span>
+      <span class="sep">·</span>
+      <span class="stat"><span id="save-count">0</span> saves</span>
+    </div>
+  </div>
+</header>
 
-function startLoadingAnim() {
-  const bar = document.getElementById('loading-bar');
-  const tip = document.getElementById('loading-tip');
-  const tips = ['Chargement du noyau NDS...','Initialisation de la mémoire...','Chargement de la ROM...','Configuration de l\'écran tactile...','Prêt!'];
-  let progress = 0;
-  let tipIdx = 0;
-  const interval = setInterval(() => {
-    progress += Math.random() * 18 + 5;
-    if (progress > 100) progress = 100;
-    bar.style.width = progress + '%';
-    tipIdx = Math.min(Math.floor(progress / 25), tips.length - 1);
-    tip.textContent = tips[tipIdx];
-    if (progress >= 100) { clearInterval(interval); setTimeout(launchEmulator, 500); }
-  }, 250);
-}
+<main class="main">
 
-function launchEmulator() {
-  const buffer = base64ToBuffer(romData);
-  const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  const romUrl = URL.createObjectURL(blob);
-  window.EJS_player = '#game-container';
-  window.EJS_core = 'nds';
-  window.EJS_gameUrl = romUrl;
-  window.EJS_pathtodata = 'https://cdn.emulatorjs.org/stable/data/';
-  window.EJS_startOnLoaded = true;
-  window.EJS_color = '#00e5ff';
-  window.EJS_backgroundColor = '#08090d';
-  window.EJS_VirtualGamepad = true;
-  window.EJS_onGameStart = async () => {
-    document.getElementById('loading-screen').style.display = 'none';
-    document.getElementById('game-container').style.display = 'flex';
-    showToast('▶ Jeu démarré!');
-    await autoLoadSave();
-  };
-  const script = document.createElement('script');
-  script.src = 'https://cdn.emulatorjs.org/stable/data/loader.js';
-  script.onerror = () => {
-    document.getElementById('loading-tip').textContent = 'Erreur: vérifiez votre connexion internet';
-    document.getElementById('loading-bar').style.background = 'var(--accent2)';
-    showToast('Erreur de chargement de l\'émulateur', true);
-  };
-  document.head.appendChild(script);
-}
-
-async function autoLoadSave() {
-  const save = await getSave(romId, currentSlot);
-  if (save && save.data) {
-    await loadSaveIntoEmulator(save.data);
-    showToast(`💾 Save slot ${currentSlot + 1} restaurée`);
-  }
-}
-
-async function renderSaveSlots() {
-  const container = document.getElementById('save-slots');
-  container.innerHTML = '';
-  for (let i = 0; i < SLOTS; i++) {
-    const save = await getSave(romId, i);
-    const slot = document.createElement('div');
-    slot.className = 'save-slot' + (i === currentSlot ? ' active-slot' : '') + (!save ? ' slot-empty' : '');
-    slot.innerHTML = `
-      <span class="slot-num">${i + 1}</span>
-      <div class="slot-info">
-        <div class="slot-name">${save ? `Slot ${i+1}` : '— vide —'}</div>
-        <div class="slot-time">${save ? formatDateShort(save.savedAt) : ''}</div>
+  <section class="hero">
+    <div class="hero-text">
+      <h1>Votre <span class="accent">collection</span><br/>Nintendo DS</h1>
+      <p>Chargez vos ROMs, jouez, sauvegardez. Tout dans le navigateur.</p>
+    </div>
+    <div class="hero-console">
+      <div class="ds-visual">
+        <div class="ds-top"><div class="ds-screen-top"><div class="ds-screen-glow"></div></div></div>
+        <div class="ds-hinge"></div>
+        <div class="ds-bottom">
+          <div class="ds-screen-bottom"></div>
+          <div class="ds-buttons">
+            <div class="ds-dpad"></div>
+            <div class="ds-abxy">
+              <span class="btn-a">A</span><span class="btn-b">B</span>
+              <span class="btn-x">X</span><span class="btn-y">Y</span>
+            </div>
+          </div>
+        </div>
       </div>
-      ${save ? `<div class="slot-actions">
-        <button class="slot-btn" onclick="event.stopPropagation();selectAndLoad(${i})" title="Charger">▶</button>
-        <button class="slot-btn del" onclick="event.stopPropagation();confirmDeleteSlot(${i})" title="Supprimer">✕</button>
-      </div>` : ''}`;
-    slot.addEventListener('click', () => selectSlot(i));
-    container.appendChild(slot);
-  }
-}
+    </div>
+  </section>
 
-function selectSlot(i) {
-  currentSlot = i;
-  document.querySelectorAll('.save-slot').forEach((el, idx) => el.classList.toggle('active-slot', idx === i));
-  showToast(`Slot ${i+1} sélectionné`);
-}
+  <!-- Upload zone -->
+  <div class="upload-zone" id="upload-zone" style="display:none;">
+    <div class="upload-inner">
+      <div class="upload-icon">⬆</div>
+      <p class="upload-title">Glissez vos fichiers <span class="accent">.nds</span> ici</p>
+      <p class="upload-sub">ou cliquez pour sélectionner</p>
+      <input type="file" id="rom-input" accept=".nds,.zip" multiple hidden />
+      <button class="btn-primary" onclick="document.getElementById('rom-input').click()">CHOISIR FICHIERS</button>
+    </div>
+  </div>
 
-async function selectAndLoad(i) {
-  selectSlot(i);
-  const save = await getSave(romId, i);
-  if (!save) { showToast(`Slot ${i+1} vide`, true); return; }
-  await loadSaveIntoEmulator(save.data);
-  showToast(`📂 Slot ${i+1} chargé!`);
-}
+  <!-- Search / Filter -->
+  <div class="toolbar">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search" class="search-input" placeholder="Rechercher un jeu..." oninput="filterGames()" />
+    </div>
+    <div class="sort-wrap">
+      <select id="sort" class="sort-select" onchange="filterGames()">
+        <option value="name">Nom A→Z</option>
+        <option value="recent">Récemment joué</option>
+        <option value="added">Ajouté récemment</option>
+      </select>
+    </div>
+    <button class="btn-clear" onclick="clearAll()" title="Tout supprimer">✕ TOUT EFFACER</button>
+  </div>
 
-async function saveGame() {
-  const saveData = getSaveDataFromEmulator();
-  if (saveData) {
-    await saveSaveData(romId, currentSlot, saveData);
-    await renderSaveSlots();
-    showToast(`💾 Slot ${currentSlot + 1} sauvegardé!`);
-  } else if (window.EJS_emulator && window.EJS_emulator.gameManager) {
-    try { window.EJS_emulator.gameManager.quickSave(); showToast(`💾 État rapide sauvegardé`); }
-    catch(e) { showToast('Émulateur non prêt — attendez le démarrage du jeu', true); }
-  } else {
-    showToast('Démarrez le jeu d\'abord', true);
-  }
-}
+  <!-- Game grid -->
+  <div class="grid" id="game-grid">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-icon">◈</div>
+      <p>Aucun jeu dans votre collection.</p>
+      <p>Cliquez sur <strong>+ AJOUTER ROM</strong> pour commencer.</p>
+    </div>
+  </div>
 
-function getSaveDataFromEmulator() {
-  try {
-    if (!window.EJS_emulator || !window.EJS_emulator.gameManager) return null;
-    const gm = window.EJS_emulator.gameManager;
-    if (typeof gm.getSaveFile === 'function') { const d = gm.getSaveFile(); return d ? bufferToBase64(d) : null; }
-    if (typeof gm.exportSaveFiles === 'function') { const s = gm.exportSaveFiles(); return s && s.length > 0 ? bufferToBase64(s[0].data) : null; }
-    return null;
-  } catch(e) { return null; }
-}
+</main>
 
-async function loadSave() {
-  const container = document.getElementById('load-slot-list');
-  container.innerHTML = '';
-  for (let i = 0; i < SLOTS; i++) {
-    const s = await getSave(romId, i);
-    const item = document.createElement('div');
-    item.className = 'save-slot' + (s ? '' : ' slot-empty');
-    item.style.cursor = s ? 'pointer' : 'default';
-    item.innerHTML = `
-      <span class="slot-num">${i+1}</span>
-      <div class="slot-info">
-        <div class="slot-name">${s ? `Slot ${i+1}` : '— vide —'}</div>
-        <div class="slot-time">${s ? formatDateShort(s.savedAt) : ''}</div>
-      </div>`;
-    if (s) {
-      item.addEventListener('click', async () => {
-        document.getElementById('load-save-modal').style.display = 'none';
-        selectSlot(i);
-        await loadSaveIntoEmulator(s.data);
-        showToast(`📂 Slot ${i+1} chargé!`);
-      });
-    }
-    container.appendChild(item);
-  }
-  document.getElementById('load-save-modal').style.display = 'flex';
-}
+<!-- Save Manager Modal -->
+<div class="modal-overlay" id="save-modal" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>GESTIONNAIRE DE SAUVEGARDES</h2>
+      <button class="modal-close" onclick="closeSaveManager()">✕</button>
+    </div>
+    <div class="modal-body" id="save-list">
+      <p class="empty-modal">Aucune sauvegarde trouvée.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="exportAllSaves()">⬇ EXPORTER TOUT</button>
+      <button class="btn-secondary" onclick="importSave()">⬆ IMPORTER SAVE</button>
+      <input type="file" id="save-import-input" accept=".sav,.dsv,.srm" hidden onchange="handleSaveImport(event)" />
+    </div>
+  </div>
+</div>
 
-async function loadSaveIntoEmulator(base64Data) {
-  try {
-    if (!window.EJS_emulator || !window.EJS_emulator.gameManager) return;
-    const buffer = base64ToBuffer(base64Data);
-    const gm = window.EJS_emulator.gameManager;
-    if (typeof gm.importSaveFiles === 'function') gm.importSaveFiles([{ name: romName + '.sav', data: new Uint8Array(buffer) }]);
-    else if (typeof gm.loadSaveFile === 'function') gm.loadSaveFile(new Uint8Array(buffer));
-  } catch(e) { console.error('Load save error:', e); }
-}
+<!-- Confirm modal -->
+<div class="modal-overlay" id="confirm-modal" style="display:none;">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h2 id="confirm-title">CONFIRMER</h2>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-msg"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-danger" id="confirm-ok">CONFIRMER</button>
+      <button class="btn-secondary" onclick="closeConfirm()">ANNULER</button>
+    </div>
+  </div>
+</div>
 
-async function exportSave() {
-  const save = await getSave(romId, currentSlot);
-  if (!save || !save.data) { showToast('Pas de sauvegarde dans ce slot', true); return; }
-  const buffer = base64ToBuffer(save.data);
-  const blob = new Blob([buffer], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${romName}_slot${currentSlot+1}.sav`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('Sauvegarde exportée!');
-}
+<div class="toast" id="toast"></div>
 
-async function importSaveFile(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const buffer = await file.arrayBuffer();
-  const base64 = bufferToBase64(buffer);
-  await saveSaveData(romId, currentSlot, base64);
-  await renderSaveSlots();
-  await loadSaveIntoEmulator(base64);
-  document.getElementById('load-save-modal').style.display = 'none';
-  showToast(`📂 Sauvegarde importée dans le slot ${currentSlot+1}!`);
-  event.target.value = '';
-}
-
-async function confirmDeleteSlot(slot) {
-  await deleteSave(`save_${romId}_slot${slot}`);
-  await renderSaveSlots();
-  showToast(`Slot ${slot+1} effacé`);
-}
-
-function emulatorAction(action) {
-  if (!window.EJS_emulator) { showToast('Émulateur non prêt', true); return; }
-  try {
-    const gm = window.EJS_emulator.gameManager;
-    if (action === 'save-state' && gm && gm.quickSave) { gm.quickSave(); showToast('📸 État sauvegardé'); }
-    else if (action === 'load-state' && gm && gm.quickLoad) { gm.quickLoad(); showToast('↩ État chargé'); }
-    else if (action === 'reset' && gm && gm.reset) { gm.reset(); showToast('↺ Jeu redémarré'); }
-  } catch(e) { showToast('Action non disponible', true); }
-}
-
-function togglePause() {
-  if (!window.EJS_emulator) return;
-  isPaused = !isPaused;
-  try {
-    if (isPaused) window.EJS_emulator.pause();
-    else window.EJS_emulator.play();
-    showToast(isPaused ? '⏸ Pause' : '▶ Reprise');
-  } catch(e) {}
-}
-
-function toggleFullscreen() {
-  const el = document.getElementById('emulator-wrap');
-  if (!document.fullscreenElement) el.requestFullscreen().catch(() => showToast('Plein écran non disponible', true));
-  else document.exitFullscreen();
-}
-
-function setupKeyboard() {
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'F2') { e.preventDefault(); saveGame(); }
-    if (e.key === 'F4') { e.preventDefault(); loadSave(); }
-    if (e.key === 'F11') { e.preventDefault(); toggleFullscreen(); }
-    if ((e.key === 'p' || e.key === 'P') && document.activeElement.tagName !== 'INPUT') togglePause();
-  });
-}
-
-let toastTimer;
-function showToast(msg, error = false) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (error ? ' error' : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { t.className = 'toast'; }, 3200);
-}
+<script src="js/db.js"></script>
+<script src="js/library.js"></script>
+</body>
+</html>
