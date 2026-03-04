@@ -132,7 +132,7 @@ export function PlayerPage(props: { sha1: string; onExit: () => void }) {
         if (!a) return;
         const saveBytes = a.getSaveRam();
         if (!saveBytes.byteLength) return;
-        await putSaveRam(romSha1, new Blob([saveBytes]));
+        await putSaveRam(romSha1, new Blob([new Uint8Array(saveBytes)]));
         setLastSaveAt(Date.now());
       }, 20000);
 
@@ -146,7 +146,7 @@ export function PlayerPage(props: { sha1: string; onExit: () => void }) {
         if (!a) return;
         const saveBytes = a.getSaveRam();
         if (!saveBytes.byteLength) return;
-        await putSaveRam(romSha1, new Blob([saveBytes]));
+        await putSaveRam(romSha1, new Blob([new Uint8Array(saveBytes)]));
         setLastSaveAt(Date.now());
       }
 
@@ -214,7 +214,7 @@ export function PlayerPage(props: { sha1: string; onExit: () => void }) {
     if (a) {
       const saveBytes = a.getSaveRam();
       if (saveBytes.byteLength) {
-        await putSaveRam(props.sha1, new Blob([saveBytes]));
+        await putSaveRam(props.sha1, new Blob([new Uint8Array(saveBytes)]));
         setLastSaveAt(Date.now());
       }
     }
