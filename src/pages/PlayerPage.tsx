@@ -176,7 +176,7 @@ export function PlayerPage(props: { sha1: string; onExit: () => void }) {
     if (!a) return;
     const state = a.saveState();
     if (!state.byteLength) { setStatus("Quick Save indisponible (core non patché)."); return; }
-    await putState(props.sha1, 0, new Blob([state]));
+    await putState(props.sha1, 0, new Blob([new Uint8Array(state)]));
     setStatus("Quick Save : OK");
   }
 
@@ -195,7 +195,7 @@ export function PlayerPage(props: { sha1: string; onExit: () => void }) {
     if (!a) return;
     const state = a.saveState();
     if (!state.byteLength) { setStatus("Savestates indisponibles (core non patché)."); return; }
-    await putState(props.sha1, slot, new Blob([state]));
+    await putState(props.sha1, slot, new Blob([new Uint8Array(state)]));
     setStatus(`State slot ${slot} : sauvegardé`);
   }
 
